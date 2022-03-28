@@ -5,6 +5,7 @@ import math
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+TAN = (120, 100, 100)
 
 SCREENSIZE = [500, 500]
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
@@ -17,6 +18,12 @@ def routecopy(r: "list[list[int]]" = ROUTE) -> "list[list[int]]":
 	e = []
 	for i in r: e.append(i.copy())
 	return e
+
+def dist(p1: "tuple[int, int]", p2: "tuple[int, int]") -> float:
+	dX = p1[0] - p2[0]
+	dY = p1[1] - p2[1]
+	com = abs(dX) + abs(dY)
+	return math.sqrt(com)
 
 class Entity:
 	speed = 0.01
@@ -65,8 +72,7 @@ class Bullet(Entity):
 		thr = 0.5
 		for e in entities:
 			if isinstance(e, Enemy):
-				if abs(e.pos[0] - self.pos[0]) < thr:
-					if abs(e.pos[1] - self.pos[1]) < thr:
+				if dist(self.pos, e.pos) < thr:
 						pygame.draw.line(screen, RED, [cellno_to_pixel(self.pos[0]), cellno_to_pixel(self.pos[1])], [cellno_to_pixel(e.pos[0]), cellno_to_pixel(e.pos[1])])
 						e.die()
 						if thr == 0.5: self.die()
@@ -76,6 +82,9 @@ class Bullet(Entity):
 		for i in range(20):
 			if self not in entities: break;
 			super().tick()
+
+class SmallBullet(Bullet):
+	speed = 0.005
 
 entities = []
 entities.append(Enemy())
@@ -95,7 +104,7 @@ while running:
 			pos = pygame.mouse.get_pos()
 			x = math.floor(pos[0] / CELLSIZE)
 			y = math.floor(pos[1] / CELLSIZE)
-			BOARD[x][y] = 99
+			BOARD[x][y] = 100
 	# Drawing
 	screen.fill(WHITE)
 	# Board
@@ -112,6 +121,17 @@ while running:
 				BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
 				pygame.draw.rect(screen, BLACK, cellrect)
+				BOARD[x][y] -= 1
+			elif BOARD[x][y] == 100:
+				pygame.draw.rect(screen, RED, cellrect)
+				es = []
+				for e in entities:
+					if isinstance(e, Enemy): es.append(e)
+				es.sort(key=lambda z: dist((x, y), z.pos))
+				if len(es) > 0: SmallBullet([[x, y], es[0].pos])
+				BOARD[x][y] = 119
+			elif BOARD[x][y] < 120:
+				pygame.draw.rect(screen, TAN, cellrect)
 				BOARD[x][y] -= 1
 	# Route
 	for i in range(len(ROUTE) - 1):
