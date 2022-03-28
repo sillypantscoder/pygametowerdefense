@@ -10,8 +10,8 @@ SCREENSIZE = [500, 500]
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 CELLSIZE = 50
 
-BOARD = [[random.choices([0, 1], weights=[10, 1], k=1)[0] for y in range(10)] for x in range(10)]
-ROUTE = [[0, 3], [5, 3], [5, 10]]
+BOARD = [[0 for y in range(10)] for x in range(10)]
+ROUTE = [[random.randint(0, 10), random.randint(0, 10)] for x in range(5)]
 
 def routecopy(r: "list[list[int]]" = ROUTE) -> "list[list[int]]":
 	e = []
@@ -19,7 +19,7 @@ def routecopy(r: "list[list[int]]" = ROUTE) -> "list[list[int]]":
 	return e
 
 class Entity:
-	speed = 0.1
+	speed = 0.01
 	def __init__(self, route: "list[list[int]]" = ROUTE):
 		self.route = routecopy(route)
 		self.pos = self.route[0].copy()
@@ -32,7 +32,7 @@ class Entity:
 	def tick(self):
 		dx = self.route[0][0] - self.prevpos[0]
 		dy = self.route[0][1] - self.prevpos[1]
-		numticks = math.sqrt(dx + dy) / self.speed
+		numticks = math.sqrt(abs(dx) + abs(dy)) / self.speed
 		if self.ticks + 1 < numticks:
 			self.ticks += 1
 			self.pos[0] += dx / numticks
@@ -54,6 +54,11 @@ while running:
 		elif event.type == pygame.VIDEORESIZE:
 			screensize = [*event.dict["size"]]
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+		elif event.type == pygame.MOUSEBUTTONDOWN:
+			pos = pygame.mouse.get_pos()
+			x = math.floor(pos[0] / CELLSIZE)
+			y = math.floor(pos[1] / CELLSIZE)
+			BOARD[x][y] = 1
 	# Drawing
 	screen.fill(WHITE)
 	# Board
