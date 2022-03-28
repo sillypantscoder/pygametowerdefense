@@ -19,7 +19,7 @@ def routecopy(r: "list[list[int]]" = ROUTE) -> "list[list[int]]":
 	return e
 
 class Entity:
-	speed = 0.1
+	speed = 0.01
 	def __init__(self, route: "list[list[int]]" = ROUTE):
 		self.route = routecopy(route)
 		self.pos = self.route[0].copy()
@@ -55,22 +55,27 @@ class Entity:
 	def tickcustom(self): pass
 
 class Enemy(Entity):
-	pass
+	speed = 0.03
 
 class Bullet(Entity):
 	def draw(self):
 		r = pygame.Surface((10, 10), pygame.SRCALPHA)
 		r.fill((255, 255, 255, 0))
 		pygame.draw.circle(r, BLACK, (5, 5), 5)
+		thr = 0.5
 		for e in entities:
 			if isinstance(e, Enemy):
-				if abs(e.pos[0] - self.pos[0]) < 0.1:
-					if abs(e.pos[1] - self.pos[1]) < 0.1:
+				if abs(e.pos[0] - self.pos[0]) < thr:
+					if abs(e.pos[1] - self.pos[1]) < thr:
 						pygame.draw.line(screen, RED, [cellno_to_pixel(self.pos[0]), cellno_to_pixel(self.pos[1])], [cellno_to_pixel(e.pos[0]), cellno_to_pixel(e.pos[1])])
-						r = pygame.Surface((20, 20), pygame.SRCALPHA)
-						r.fill((255, 0, 0, 255))
-						pygame.draw.circle(r, BLACK, (15, 15), 5)
+						e.die()
+						if thr == 0.5: self.die()
+						thr = 1
 		return r
+	def tick(self):
+		for i in range(20):
+			if self not in entities: break;
+			super().tick()
 
 entities = []
 entities.append(Enemy())
@@ -100,8 +105,10 @@ while running:
 			if BOARD[x][y] == 0:
 				pygame.draw.rect(screen, BLACK, cellrect, 1)
 			elif BOARD[x][y] == 1:
-				pygame.draw.rect(screen, RED, cellrect)
-				Bullet([[x, y], [pixel_to_cellno(CELLSIZE), 0]])
+				if len(entities) > 0:
+					pygame.draw.rect(screen, RED, cellrect)
+					e = random.choice(entities)
+					Bullet([[x, y], e.pos])
 				BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
 				pygame.draw.rect(screen, BLACK, cellrect)
@@ -119,7 +126,7 @@ while running:
 		y = cellno_to_pixel(e.pos[1]) - (s.get_height() / 2)
 		screen.blit(s, (x, y))
 	# Spawning
-	if random.random() < 0.1: Enemy()
+	if random.random() < 0.07: Enemy()
 	#pygame.draw.line(screen, BLACK, [cellno_to_pixel(e.prevpos[0]), cellno_to_pixel(e.prevpos[1])], [cellno_to_pixel(e.route[0][0]), cellno_to_pixel(e.route[0][1])], 1)
 	# Flip
 	pygame.display.flip()
