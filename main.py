@@ -129,7 +129,7 @@ def MENU():
 		pos = pygame.mouse.get_pos()
 		x = math.floor(pos[0] / CELLSIZE)
 		y = math.floor(pos[1] / CELLSIZE)
-		if pygame.mouse.get_pressed()[0]: return;
+		#if pygame.mouse.get_pressed()[0]: return;
 		k = pygame.key.get_pressed()
 		if k[pygame.K_s]: BOARD[x][y] = 100
 		if k[pygame.K_b]: BOARD[x][y] = 99
