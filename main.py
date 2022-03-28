@@ -10,7 +10,7 @@ SCREENSIZE = [500, 500]
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 CELLSIZE = 50
 
-BOARD = [[0 for y in range(10)] for x in range(10)]
+BOARD = [[random.choice([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, random.randint(1, 99)]) for y in range(10)] for x in range(10)]
 ROUTE = [[random.randint(0, 10), random.randint(0, 10)] for x in range(5)]
 
 def routecopy(r: "list[list[int]]" = ROUTE) -> "list[list[int]]":
@@ -44,6 +44,7 @@ class Entity:
 		else:
 			self.prevpos = self.route.pop(0)
 			self.ticks = 0
+		self.tickcustom()
 	def die(self):
 		if self in entities:
 			self.despawn()
@@ -51,10 +52,30 @@ class Entity:
 		else:
 			print(f"Entity {self} was removed twice!")
 	def despawn(self): pass
+	def tickcustom(self): pass
+
+class Enemy(Entity):
+	pass
+
+class Bullet(Entity):
+	def draw(self):
+		r = pygame.Surface((10, 10), pygame.SRCALPHA)
+		r.fill((255, 255, 255, 0))
+		pygame.draw.circle(r, BLACK, (5, 5), 5)
+		for e in entities:
+			if isinstance(e, Enemy):
+				if abs(e.pos[0] - self.pos[0]) < 0.1:
+					if abs(e.pos[1] - self.pos[1]) < 0.1:
+						pygame.draw.line(screen, RED, [cellno_to_pixel(self.pos[0]), cellno_to_pixel(self.pos[1])], [cellno_to_pixel(e.pos[0]), cellno_to_pixel(e.pos[1])])
+						r = pygame.Surface((20, 20), pygame.SRCALPHA)
+						r.fill((255, 0, 0, 255))
+						pygame.draw.circle(r, BLACK, (15, 15), 5)
+		return r
 
 entities = []
-entities.append(Entity())
+entities.append(Enemy())
 cellno_to_pixel = (lambda x: round((x * CELLSIZE) + (0.5 * CELLSIZE)))
+pixel_to_cellno = (lambda x: (x - (0.5 * CELLSIZE)) / CELLSIZE)
 
 c = pygame.time.Clock()
 running = True
@@ -80,7 +101,7 @@ while running:
 				pygame.draw.rect(screen, BLACK, cellrect, 1)
 			elif BOARD[x][y] == 1:
 				pygame.draw.rect(screen, RED, cellrect)
-				Entity()
+				Bullet([[x, y], [pixel_to_cellno(CELLSIZE), 0]])
 				BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
 				pygame.draw.rect(screen, BLACK, cellrect)
@@ -97,6 +118,8 @@ while running:
 		x = cellno_to_pixel(e.pos[0])# - (s.get_width() / 2)
 		y = cellno_to_pixel(e.pos[1]) - (s.get_height() / 2)
 		screen.blit(s, (x, y))
+	# Spawning
+	if random.random() < 0.1: Enemy()
 	#pygame.draw.line(screen, BLACK, [cellno_to_pixel(e.prevpos[0]), cellno_to_pixel(e.prevpos[1])], [cellno_to_pixel(e.route[0][0]), cellno_to_pixel(e.route[0][1])], 1)
 	# Flip
 	pygame.display.flip()
