@@ -81,6 +81,7 @@ cellnos_to_pixels = (lambda x, y: (cellno_to_pixel(x), cellno_to_pixel(y)))
 pixels_to_cellnos = (lambda x, y: (pixel_to_cellno(x), pixel_to_cellno(y)))
 wave_lvl = 0
 wave_time = 60 * 5
+wave = False
 defense = 10
 money = 0
 
@@ -139,13 +140,14 @@ while running:
 		y = cellno_to_pixel(e.pos[1]) - (s.get_height() / 2)
 		screen.blit(s, (x, y))
 	# Spawning
-	if random.random() < 0.08 * wave_lvl: Enemy()
+	if wave and random.random() < 0.08 * wave_lvl: Enemy()
 	wave_time -= 1
 	if wave_time <= 0:
 		wave_time = 60 * 10
-		wave_lvl += 1
+		wave = not wave
+		if wave: wave_lvl += 1
 	# Text
-	t = FONT.render(f"Wave {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: ${money}, defenses left: {defense}", True, BLACK)
+	t = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: ${money}, defenses left: {defense}", True, BLACK)
 	screen.blit(t, (0, 0))
 	if SCREENSIZE[0] < t.get_width():
 		SCREENSIZE[0] = t.get_width()
