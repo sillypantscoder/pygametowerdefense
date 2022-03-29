@@ -64,85 +64,12 @@ class Entity:
 class Enemy(Entity):
 	speed = 0.03
 
-class Bullet(Entity):
-	def draw(self):
-		r = pygame.Surface((10, 10), pygame.SRCALPHA)
-		r.fill((255, 255, 255, 0))
-		pygame.draw.circle(r, BLACK, (5, 5), 5)
-		thr = 0.5
-		for e in entities:
-			if isinstance(e, Enemy):
-				if dist(self.pos, e.pos) < thr:
-						pygame.draw.line(screen, RED, [cellno_to_pixel(self.pos[0]), cellno_to_pixel(self.pos[1])], [cellno_to_pixel(e.pos[0]), cellno_to_pixel(e.pos[1])])
-						e.die()
-						if thr == 0.5: self.die()
-						thr = 1
-		return r
-	def tick(self):
-		for i in range(20):
-			if self not in entities: break;
-			super().tick()
-
-class SmallBullet(Bullet):
-	speed = 0.001
-
-def MENU():
-	global SCREENSIZE
-	global screen
-	c = pygame.time.Clock()
-	running = True
-	while running:
-		for event in pygame.event.get():
-			if event.type == pygame.QUIT:
-				running = False
-			elif event.type == pygame.VIDEORESIZE:
-				SCREENSIZE = [*event.dict["size"]]
-				screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
-		# Drawing
-		screen.fill(WHITE)
-		# Board
-		for x in range(len(BOARD)):
-			for y in range(len(BOARD[x])):
-				cellrect = pygame.Rect(x * CELLSIZE, y * CELLSIZE, CELLSIZE, CELLSIZE)
-				if BOARD[x][y] == 0:
-					pygame.draw.rect(screen, BLACK, cellrect, 1)
-				elif BOARD[x][y] == 1:
-					pygame.draw.rect(screen, RED, cellrect)
-				elif BOARD[x][y] < 100:
-					pygame.draw.rect(screen, BLACK, cellrect)
-				elif BOARD[x][y] == 100:
-					pygame.draw.rect(screen, RED, cellrect)
-				elif BOARD[x][y] < 120:
-					pygame.draw.rect(screen, TAN, cellrect)
-		# Route
-		for i in range(len(ROUTE) - 1):
-			start = (cellno_to_pixel(ROUTE[i][0]), cellno_to_pixel(ROUTE[i][1]))
-			end = (cellno_to_pixel(ROUTE[i + 1][0]), cellno_to_pixel(ROUTE[i + 1][1]))
-			pygame.draw.line(screen, RED, start, end, round(0.3 * CELLSIZE))
-		# Entities
-		for e in entities:
-			s = e.draw()
-			x = cellno_to_pixel(e.pos[0])# - (s.get_width() / 2)
-			y = cellno_to_pixel(e.pos[1]) - (s.get_height() / 2)
-			screen.blit(s, (x, y))
-		# Dialog
-		pos = pygame.mouse.get_pos()
-		x = math.floor(pos[0] / CELLSIZE)
-		y = math.floor(pos[1] / CELLSIZE)
-		#if pygame.mouse.get_pressed()[0]: return;
-		k = pygame.key.get_pressed()
-		if k[pygame.K_s]: BOARD[x][y] = 100
-		if k[pygame.K_b]: BOARD[x][y] = 99
-		#pygame.draw.line(screen, BLACK, [cellno_to_pixel(e.prevpos[0]), cellno_to_pixel(e.prevpos[1])], [cellno_to_pixel(e.route[0][0]), cellno_to_pixel(e.route[0][1])], 1)
-		# Flip
-		pygame.display.flip()
-		c.tick(20)
-
-
 entities = []
 entities.append(Enemy())
 cellno_to_pixel = (lambda x: round((x * CELLSIZE) + (0.5 * CELLSIZE)))
 pixel_to_cellno = (lambda x: (x - (0.5 * CELLSIZE)) / CELLSIZE)
+cellnos_to_pixels = (lambda x, y: (cellno_to_pixel(x), cellno_to_pixel(y)))
+pixels_to_cellnos = (lambda x, y: (pixel_to_cellno(x), pixel_to_cellno(y)))
 
 c = pygame.time.Clock()
 running = True
@@ -153,8 +80,6 @@ while running:
 		elif event.type == pygame.VIDEORESIZE:
 			SCREENSIZE = [*event.dict["size"]]
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
-		elif event.type == pygame.MOUSEBUTTONDOWN:
-			MENU()
 	# Drawing
 	screen.fill(WHITE)
 	# Board
@@ -164,11 +89,17 @@ while running:
 			if BOARD[x][y] == 0:
 				pygame.draw.rect(screen, BLACK, cellrect, 1)
 			elif BOARD[x][y] == 1:
-				if len(entities) > 0:
-					pygame.draw.rect(screen, RED, cellrect)
-					e = random.choice(entities)
-					Bullet([[x, y], e.pos])
-				BOARD[x][y] = 99
+				pygame.draw.rect(screen, RED, cellrect)
+				es = []
+				for e in entities:
+					if isinstance(e, Enemy): es.append(e)
+				es.sort(key=lambda z: dist((x, y), z.pos))
+				if len(es) > 0:
+					e = es[0]
+					if dist((x, y), e.pos) < 3:
+						pygame.draw.line(screen, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
+						e.die()
+						BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
 				pygame.draw.rect(screen, BLACK, cellrect)
 				BOARD[x][y] -= 1
@@ -178,8 +109,12 @@ while running:
 				for e in entities:
 					if isinstance(e, Enemy): es.append(e)
 				es.sort(key=lambda z: dist((x, y), z.pos))
-				if len(es) > 0: SmallBullet([[x, y], es[0].pos])
-				BOARD[x][y] = 119
+				if len(es) > 0:
+					e = es[0]
+					if dist((x, y), e.pos) < 1.5:
+						pygame.draw.line(screen, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
+						e.die()
+						BOARD[x][y] = 119
 			elif BOARD[x][y] < 120:
 				pygame.draw.rect(screen, TAN, cellrect)
 				BOARD[x][y] -= 1
