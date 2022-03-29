@@ -15,7 +15,7 @@ CELLSIZE = 50
 
 BOARD = [[random.choice([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, random.randint(1, 99)]) for y in range(10)] for x in range(10)]
 ROUTE = [[random.randint(0, 10), random.randint(0, 10)] for x in range(5)]
-FONT = pygame.font.SysFont(pygame.font.get_default_font(), 50)
+FONT = pygame.font.SysFont(pygame.font.get_default_font(), 40)
 FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
 
 def routecopy(r: "list[list[int]]" = ROUTE) -> "list[list[int]]":
@@ -69,6 +69,9 @@ class Entity:
 
 class Enemy(Entity):
 	speed = 0.03
+	def despawn(self):
+		global money
+		money += 1
 
 entities = []
 entities.append(Enemy())
@@ -79,7 +82,7 @@ pixels_to_cellnos = (lambda x, y: (pixel_to_cellno(x), pixel_to_cellno(y)))
 wave_lvl = 0
 wave_time = 60 * 5
 defense = 10
-score = 0
+money = 0
 
 c = pygame.time.Clock()
 running = True
@@ -90,6 +93,13 @@ while running:
 		elif event.type == pygame.VIDEORESIZE:
 			SCREENSIZE = [*event.dict["size"]]
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+		elif event.type == pygame.MOUSEBUTTONDOWN:
+			pos = pygame.mouse.get_pos()
+			x = math.floor(pos[0] / CELLSIZE)
+			y = math.floor(pos[1] / CELLSIZE)
+			if money >= 3:
+				BOARD[x][y] = 99
+				money -= 3
 	# Drawing
 	screen.fill(WHITE)
 	# Board
@@ -111,7 +121,6 @@ while running:
 					if dist((x, y), e.pos) < 2:
 						pygame.draw.line(board, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
 						e.die()
-						score += 1
 						BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
 				pygame.draw.rect(board, BLACK, cellrect)
@@ -136,11 +145,29 @@ while running:
 		wave_time = 60 * 10
 		wave_lvl += 1
 	# Text
-	t = FONT.render(f"Wave {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Score: {score}, defenses left: {defense}", True, BLACK)
+	t = FONT.render(f"Wave {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: ${money}, defenses left: {defense}", True, BLACK)
 	screen.blit(t, (0, 0))
+	if SCREENSIZE[0] < t.get_width():
+		SCREENSIZE[0] = t.get_width()
+		screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 	if defense <= 0:
 		running = False
 	#pygame.draw.line(screen, BLACK, [cellno_to_pixel(e.prevpos[0]), cellno_to_pixel(e.prevpos[1])], [cellno_to_pixel(e.route[0][0]), cellno_to_pixel(e.route[0][1])], 1)
 	# Flip
+	pygame.display.flip()
+	c.tick(60)
+
+running = True
+t = FONT.render(f"You survived until wave {wave_lvl} and you had ${money}", True, BLACK)
+SCREENSIZE = [t.get_width(), t.get_height()]
+screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+while running:
+	for event in pygame.event.get():
+		if event.type == pygame.QUIT:
+			running = False
+		elif event.type == pygame.MOUSEBUTTONDOWN:
+			running = False
+	screen.fill(WHITE)
+	screen.blit(t, (0, 0))
 	pygame.display.flip()
 	c.tick(60)
