@@ -2,6 +2,8 @@ import pygame
 import random
 import math
 
+pygame.font.init()
+
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
@@ -13,6 +15,8 @@ CELLSIZE = 50
 
 BOARD = [[random.choice([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, random.randint(1, 99)]) for y in range(10)] for x in range(10)]
 ROUTE = [[random.randint(0, 10), random.randint(0, 10)] for x in range(5)]
+FONT = pygame.font.SysFont(pygame.font.get_default_font(), 50)
+FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
 
 def routecopy(r: "list[list[int]]" = ROUTE) -> "list[list[int]]":
 	e = []
@@ -38,8 +42,10 @@ class Entity:
 		r.fill((0, 0, 0))
 		return r
 	def tick(self):
+		global defense
 		if len(self.route) == 0:
 			self.die()
+			defense -= 1
 			return;
 		dx = self.route[0][0] - self.prevpos[0]
 		dy = self.route[0][1] - self.prevpos[1]
@@ -70,6 +76,10 @@ cellno_to_pixel = (lambda x: round((x * CELLSIZE) + (0.5 * CELLSIZE)))
 pixel_to_cellno = (lambda x: (x - (0.5 * CELLSIZE)) / CELLSIZE)
 cellnos_to_pixels = (lambda x, y: (cellno_to_pixel(x), cellno_to_pixel(y)))
 pixels_to_cellnos = (lambda x, y: (pixel_to_cellno(x), pixel_to_cellno(y)))
+wave_lvl = 0
+wave_time = 60 * 5
+defense = 10
+score = 0
 
 c = pygame.time.Clock()
 running = True
@@ -83,41 +93,30 @@ while running:
 	# Drawing
 	screen.fill(WHITE)
 	# Board
+	board = pygame.Surface((CELLSIZE * 10, CELLSIZE * 10))
+	board.fill(WHITE)
 	for x in range(len(BOARD)):
 		for y in range(len(BOARD[x])):
 			cellrect = pygame.Rect(x * CELLSIZE, y * CELLSIZE, CELLSIZE, CELLSIZE)
 			if BOARD[x][y] == 0:
-				pygame.draw.rect(screen, BLACK, cellrect, 1)
+				pygame.draw.rect(board, BLACK, cellrect, 1)
 			elif BOARD[x][y] == 1:
-				pygame.draw.rect(screen, RED, cellrect)
+				pygame.draw.rect(board, RED, cellrect)
 				es = []
 				for e in entities:
 					if isinstance(e, Enemy): es.append(e)
 				es.sort(key=lambda z: dist((x, y), z.pos))
 				if len(es) > 0:
 					e = es[0]
-					if dist((x, y), e.pos) < 3:
-						pygame.draw.line(screen, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
+					if dist((x, y), e.pos) < 2:
+						pygame.draw.line(board, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
 						e.die()
+						score += 1
 						BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
-				pygame.draw.rect(screen, BLACK, cellrect)
+				pygame.draw.rect(board, BLACK, cellrect)
 				BOARD[x][y] -= 1
-			elif BOARD[x][y] == 100:
-				pygame.draw.rect(screen, RED, cellrect)
-				es = []
-				for e in entities:
-					if isinstance(e, Enemy): es.append(e)
-				es.sort(key=lambda z: dist((x, y), z.pos))
-				if len(es) > 0:
-					e = es[0]
-					if dist((x, y), e.pos) < 1.5:
-						pygame.draw.line(screen, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
-						e.die()
-						BOARD[x][y] = 119
-			elif BOARD[x][y] < 120:
-				pygame.draw.rect(screen, TAN, cellrect)
-				BOARD[x][y] -= 1
+	screen.blit(board, (0, FONTHEIGHT))
 	# Route
 	for i in range(len(ROUTE) - 1):
 		start = (cellno_to_pixel(ROUTE[i][0]), cellno_to_pixel(ROUTE[i][1]))
@@ -131,8 +130,17 @@ while running:
 		y = cellno_to_pixel(e.pos[1]) - (s.get_height() / 2)
 		screen.blit(s, (x, y))
 	# Spawning
-	if random.random() < 0.07: Enemy()
+	if random.random() < 0.08 * wave_lvl: Enemy()
+	wave_time -= 1
+	if wave_time <= 0:
+		wave_time = 60 * 10
+		wave_lvl += 1
+	# Text
+	t = FONT.render(f"Wave {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Score: {score}, defenses left: {defense}", True, BLACK)
+	screen.blit(t, (0, 0))
+	if defense <= 0:
+		running = False
 	#pygame.draw.line(screen, BLACK, [cellno_to_pixel(e.prevpos[0]), cellno_to_pixel(e.prevpos[1])], [cellno_to_pixel(e.route[0][0]), cellno_to_pixel(e.route[0][1])], 1)
 	# Flip
 	pygame.display.flip()
-	c.tick(20)
+	c.tick(60)
