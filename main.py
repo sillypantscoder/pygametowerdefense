@@ -9,7 +9,7 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 TAN = (120, 100, 100)
 
-SCREENSIZE = [500, 500]
+SCREENSIZE = [550, 500]
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 CELLSIZE = 50
 
@@ -31,16 +31,42 @@ def dist(p1: "tuple[int, int]", p2: "tuple[int, int]") -> float:
 
 class Entity:
 	speed = 0.01
+	def __init__(self, x: float, y: float):
+		entities.append(self)
+		self.pos = [x, y]
+		self.initcustom()
+	def frame(self):
+		self.tick()
+		if self in entities:
+			s = self.draw()
+			x = cellno_to_pixel(self.pos[0])# - (s.get_width() / 2)
+			y = cellno_to_pixel(self.pos[1]) - (s.get_height() / 2)
+			screen.blit(s, (x, y))
+	def draw(self):
+		r = pygame.Surface((10, 10))
+		r.fill((0, 0, 0))
+		return r
+	def tick(self):
+		self.tickcustom()
+	def die(self):
+		if self in entities:
+			self.despawn()
+			entities.remove(self)
+		else:
+			print(f"Entity {self} was removed twice!")
+	def despawn(self): pass
+	def tickcustom(self): pass
+	def initcustom(self): pass
+
+class Mob(Entity):
+	speed = 0.01
 	def __init__(self, route: "list[list[int]]" = ROUTE):
 		self.route = routecopy(route)
 		self.pos = self.route[0].copy()
 		self.prevpos = self.route.pop(0)
 		self.ticks = 0
 		entities.append(self)
-	def draw(self):
-		r = pygame.Surface((10, 10))
-		r.fill((0, 0, 0))
-		return r
+		self.initcustom()
 	def tick(self):
 		global defense
 		if len(self.route) == 0:
@@ -58,22 +84,30 @@ class Entity:
 			self.prevpos = self.route.pop(0)
 			self.ticks = 0
 		self.tickcustom()
-	def die(self):
-		if self in entities:
-			self.despawn()
-			entities.remove(self)
-		else:
-			print(f"Entity {self} was removed twice!")
-	def despawn(self): pass
-	def tickcustom(self): pass
 
-class Enemy(Entity):
+class Enemy(Mob):
 	speed = 0.03
 	def despawn(self):
-		global money
-		money += 1
+		Coins(self.pos[0] + (random.choice(range(-40, 40, 5)) / 100), self.pos[1] + (random.choice(range(-40, 40, 5)) / 100))
 
-entities = []
+class Coins(Entity):
+	def draw(self):
+		r = pygame.Surface((8, 8), pygame.SRCALPHA)
+		r.fill((255, 255, 255, 0))
+		pygame.draw.circle(r, (252, 186, 3, self.ticks), (4, 4), 4)
+		return r
+	def initcustom(self):
+		self.ticks = 255
+	def tickcustom(self):
+		if self.ticks < 255:
+			self.ticks -= 4
+		elif dist(pygame.mouse.get_pos(), cellnos_to_pixels(*self.pos)) < 3:
+			self.ticks = 254
+			global money
+			money += 1
+		if self.ticks <= 0: self.die()
+
+entities: "list[Entity]" = []
 entities.append(Enemy())
 cellno_to_pixel = (lambda x: round((x * CELLSIZE) + (0.5 * CELLSIZE)))
 pixel_to_cellno = (lambda x: (x - (0.5 * CELLSIZE)) / CELLSIZE)
@@ -134,11 +168,7 @@ while running:
 		pygame.draw.line(screen, RED, start, end, round(0.3 * CELLSIZE))
 	# Entities
 	for e in entities:
-		e.tick()
-		s = e.draw()
-		x = cellno_to_pixel(e.pos[0])# - (s.get_width() / 2)
-		y = cellno_to_pixel(e.pos[1]) - (s.get_height() / 2)
-		screen.blit(s, (x, y))
+		e.frame()
 	# Spawning
 	if wave and random.random() < 0.08 * wave_lvl: Enemy()
 	wave_time -= 1
