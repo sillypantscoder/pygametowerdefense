@@ -10,11 +10,12 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 TAN = (120, 100, 100)
 
+BOARDSIZE = [10, 10]
 SCREENSIZE = [550, 500]
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 CELLSIZE = 50
 
-BOARD = [[random.choice([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, random.randint(1, 99)]) for y in range(10)] for x in range(10)]
+BOARD = [random.choices([0, random.randint(1, 99)], weights=[20, 1], k=BOARDSIZE[0]) for x in range(BOARDSIZE[1])]
 ROUTE = [[random.randint(0, 10), random.randint(0, 10)] for x in range(5)]
 FONT = pygame.font.SysFont(pygame.font.get_default_font(), 40)
 FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
@@ -29,6 +30,9 @@ def dist(p1: "tuple[int, int]", p2: "tuple[int, int]") -> float:
 	dY = p1[1] - p2[1]
 	com = abs(dX) + abs(dY)
 	return math.sqrt(com)
+
+def insideBoard(x, y):
+	return (x >= 0) and (y >= 0) and (x < BOARDSIZE[0]) and (y < BOARDSIZE[1])
 
 class Entity:
 	speed = 0.01
@@ -99,19 +103,19 @@ class Coins(Entity):
 		return r
 	def initcustom(self):
 		self.ticks = 255
-		self.totalticks = 250
+		self.totalticks = 150
 	def tickcustom(self):
+		global money
 		self.totalticks -= 1
 		if self.ticks < 255 or self.totalticks <= 0:
 			self.ticks -= 4
 		elif dist(pygame.mouse.get_pos(), cellnos_to_pixels(*self.pos)) < 3:
 			self.ticks = 254
-			global money
+		if self.ticks <= 0:
 			money += 1
-		if self.ticks <= 0: self.die()
+			self.die()
 
 entities: "list[Entity]" = []
-entities.append(Enemy())
 cellno_to_pixel = (lambda x: round((x * CELLSIZE) + (0.5 * CELLSIZE)))
 pixel_to_cellno = (lambda x: (x - (0.5 * CELLSIZE)) / CELLSIZE)
 cellnos_to_pixels = (lambda x, y: (cellno_to_pixel(x), cellno_to_pixel(y)))
@@ -120,7 +124,7 @@ wave_lvl = 0
 wave_time = 60 * 5
 wave = False
 defense = 10
-money = 0
+money = 6
 headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: $", True, BLACK)
 textures = {
 	"ground": pygame.transform.scale(pygame.image.load("ground.png"), (CELLSIZE, CELLSIZE)),
@@ -156,7 +160,7 @@ while running:
 			else:
 				x = math.floor(pos[0] / CELLSIZE)
 				y = math.floor(pos[1] / CELLSIZE)
-				if money >= 3 and BOARD[x][y] == 0:
+				if insideBoard(x, y) and money >= 3 and BOARD[x][y] == 0:
 					BOARD[x][y] = dragging_thing['id']
 					money -= 3
 			dragging_thing = None
@@ -223,7 +227,7 @@ while running:
 	y = math.floor(pos[1] / CELLSIZE)
 	if dragging_thing:
 		drag_target = pygame.Rect(x * CELLSIZE, (y * CELLSIZE) + FONTHEIGHT, CELLSIZE, CELLSIZE)
-		if money >= 3 and BOARD[x][y] == 0:
+		if insideBoard(x, y) and money >= 3 and BOARD[x][y] == 0:
 			pygame.draw.rect(screen, (0, 255, 0), drag_target, 5)
 		else:
 			pygame.draw.rect(screen, (255, 0, 0), drag_target, 5)
