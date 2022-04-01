@@ -1,3 +1,4 @@
+from tkinter.tix import CELL
 import pygame
 import random
 import math
@@ -124,10 +125,14 @@ textures = {
 	"tower_active": pygame.transform.scale(pygame.image.load("tower_active.png"), (CELLSIZE, CELLSIZE)),
 	"tower": pygame.transform.scale(pygame.image.load("tower.png"), (CELLSIZE, CELLSIZE))
 }
+tower_row_rect = pygame.Rect(0, SCREENSIZE[1] - CELLSIZE, SCREENSIZE[0], CELLSIZE)
+tower_row = [{"id": 99, "image": "tower", "cost": 3}]
+dragging_thing = None
 
 c = pygame.time.Clock()
 running = True
 while running:
+	pos = pygame.mouse.get_pos()
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			running = False
@@ -136,11 +141,27 @@ while running:
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 		elif event.type == pygame.MOUSEBUTTONDOWN:
 			pos = pygame.mouse.get_pos()
+			if tower_row_rect.collidepoint(*pos):
+				# TODO: check the cost, disallow dragging if they can't afford it.
+				idx = (pos[0] - tower_row_rect.left) / SCREENSIZE[0]
+				idx = math.floor(idx)
+				if idx < len(tower_row):
+					dragging_thing = tower_row[idx]
+					continue
 			x = math.floor(pos[0] / CELLSIZE)
 			y = math.floor(pos[1] / CELLSIZE)
 			if money >= 3:
 				BOARD[x][y] = 99
 				money -= 3
+		elif event.type == pygame.MOUSEBUTTONUP and dragging_thing != None:
+			pos = pygame.mouse.get_pos()
+			if tower_row_rect.collidepoint(*pos):
+				# let go within the tower row, so ignore it.
+				continue
+			x = math.floor(pos[0] / CELLSIZE)
+			y = math.floor(pos[1] / CELLSIZE)
+			BOARD[x][y] = dragging_thing['id']
+			dragging_thing = None
 	# Drawing
 	screen.fill(WHITE)
 	# Board
@@ -151,6 +172,8 @@ while running:
 			cellrect = pygame.Rect(x * CELLSIZE, y * CELLSIZE, CELLSIZE, CELLSIZE)
 			board.blit(textures["ground"], cellrect)
 			if BOARD[x][y] == 0:
+				# Just ground here, nothing to do.
+				# I'm so bored...
 				pass
 				#pygame.draw.rect(board, BLACK, cellrect, 1)
 				#board.blit(textures["ground"], cellrect)
@@ -196,7 +219,17 @@ while running:
 	if defense <= 0:
 		running = False
 	headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: $", True, BLACK)
-	#pygame.draw.line(screen, BLACK, [cellno_to_pixel(e.prevpos[0]), cellno_to_pixel(e.prevpos[1])], [cellno_to_pixel(e.route[0][0]), cellno_to_pixel(e.route[0][1])], 1)
+	# Bottom row of towers
+	pygame.draw.rect(screen, WHITE, tower_row_rect)
+	for t in tower_row:
+		screen.blit(textures[t["image"]], (0, SCREENSIZE[1] - 50))
+	# Dragging tower
+	x = math.floor(pos[0] / CELLSIZE)
+	y = math.floor(pos[1] / CELLSIZE)
+	if dragging_thing:
+		drag_target = pygame.Rect(x * CELLSIZE, y * CELLSIZE, CELLSIZE, CELLSIZE)
+		pygame.draw.rect(screen, (0, 255, 0), drag_target, 5)
+		screen.blit(textures[dragging_thing["image"]], [pos[0] - 25, pos[1] - 25])
 	# Flip
 	pygame.display.flip()
 	c.tick(60)
