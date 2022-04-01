@@ -99,8 +99,10 @@ class Coins(Entity):
 		return r
 	def initcustom(self):
 		self.ticks = 255
+		self.totalticks = 250
 	def tickcustom(self):
-		if self.ticks < 255:
+		self.totalticks -= 1
+		if self.ticks < 255 or self.totalticks <= 0:
 			self.ticks -= 4
 		elif dist(pygame.mouse.get_pos(), cellnos_to_pixels(*self.pos)) < 3:
 			self.ticks = 254
@@ -125,14 +127,16 @@ textures = {
 	"tower_active": pygame.transform.scale(pygame.image.load("tower_active.png"), (CELLSIZE, CELLSIZE)),
 	"tower": pygame.transform.scale(pygame.image.load("tower.png"), (CELLSIZE, CELLSIZE))
 }
-tower_row_rect = pygame.Rect(0, SCREENSIZE[1] - CELLSIZE, SCREENSIZE[0], CELLSIZE)
 tower_row = [{"id": 99, "image": "tower", "cost": 3}]
 dragging_thing = None
 
 c = pygame.time.Clock()
 running = True
 while running:
-	pos = pygame.mouse.get_pos()
+	tower_row_rect = pygame.Rect(0, SCREENSIZE[1] - CELLSIZE, SCREENSIZE[0], CELLSIZE)
+	tower_row_rect_mouse = pygame.Rect(0, (SCREENSIZE[1] - CELLSIZE) - FONTHEIGHT, SCREENSIZE[0], CELLSIZE)
+	pos = [*pygame.mouse.get_pos()]
+	pos[1] -= FONTHEIGHT
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			running = False
@@ -140,27 +144,21 @@ while running:
 			SCREENSIZE = [*event.dict["size"]]
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 		elif event.type == pygame.MOUSEBUTTONDOWN:
-			pos = pygame.mouse.get_pos()
-			if tower_row_rect.collidepoint(*pos):
-				# TODO: check the cost, disallow dragging if they can't afford it.
+			if tower_row_rect_mouse.collidepoint(*pos):
 				idx = (pos[0] - tower_row_rect.left) / SCREENSIZE[0]
 				idx = math.floor(idx)
 				if idx < len(tower_row):
 					dragging_thing = tower_row[idx]
-					continue
-			x = math.floor(pos[0] / CELLSIZE)
-			y = math.floor(pos[1] / CELLSIZE)
-			if money >= 3:
-				BOARD[x][y] = 99
-				money -= 3
 		elif event.type == pygame.MOUSEBUTTONUP and dragging_thing != None:
-			pos = pygame.mouse.get_pos()
-			if tower_row_rect.collidepoint(*pos):
+			if tower_row_rect_mouse.collidepoint(*pos):
 				# let go within the tower row, so ignore it.
-				continue
-			x = math.floor(pos[0] / CELLSIZE)
-			y = math.floor(pos[1] / CELLSIZE)
-			BOARD[x][y] = dragging_thing['id']
+				pass
+			else:
+				x = math.floor(pos[0] / CELLSIZE)
+				y = math.floor(pos[1] / CELLSIZE)
+				if money >= 3 and BOARD[x][y] == 0:
+					BOARD[x][y] = dragging_thing['id']
+					money -= 3
 			dragging_thing = None
 	# Drawing
 	screen.fill(WHITE)
@@ -175,10 +173,8 @@ while running:
 				# Just ground here, nothing to do.
 				# I'm so bored...
 				pass
-				#pygame.draw.rect(board, BLACK, cellrect, 1)
 				#board.blit(textures["ground"], cellrect)
 			elif BOARD[x][y] == 1:
-				#pygame.draw.rect(board, RED, cellrect)
 				board.blit(textures["tower_active"], cellrect)
 				es = []
 				for e in entities:
@@ -191,7 +187,6 @@ while running:
 						e.die()
 						BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
-				#pygame.draw.rect(board, BLACK, cellrect)
 				board.blit(textures["tower"], cellrect)
 				BOARD[x][y] -= 1
 	screen.blit(board, (0, FONTHEIGHT))
@@ -227,9 +222,12 @@ while running:
 	x = math.floor(pos[0] / CELLSIZE)
 	y = math.floor(pos[1] / CELLSIZE)
 	if dragging_thing:
-		drag_target = pygame.Rect(x * CELLSIZE, y * CELLSIZE, CELLSIZE, CELLSIZE)
-		pygame.draw.rect(screen, (0, 255, 0), drag_target, 5)
-		screen.blit(textures[dragging_thing["image"]], [pos[0] - 25, pos[1] - 25])
+		drag_target = pygame.Rect(x * CELLSIZE, (y * CELLSIZE) + FONTHEIGHT, CELLSIZE, CELLSIZE)
+		if money >= 3 and BOARD[x][y] == 0:
+			pygame.draw.rect(screen, (0, 255, 0), drag_target, 5)
+		else:
+			pygame.draw.rect(screen, (255, 0, 0), drag_target, 5)
+		screen.blit(textures[dragging_thing["image"]], [pos[0] - (CELLSIZE / 2), pos[1] + (FONTHEIGHT - (CELLSIZE / 2))])
 	# Flip
 	pygame.display.flip()
 	c.tick(60)
