@@ -118,6 +118,12 @@ wave_time = 60 * 5
 wave = False
 defense = 10
 money = 0
+headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: $", True, BLACK)
+textures = {
+	"ground": pygame.transform.scale(pygame.image.load("ground.png"), (CELLSIZE, CELLSIZE)),
+	"tower_active": pygame.transform.scale(pygame.image.load("tower_active.png"), (CELLSIZE, CELLSIZE)),
+	"tower": pygame.transform.scale(pygame.image.load("tower.png"), (CELLSIZE, CELLSIZE))
+}
 
 c = pygame.time.Clock()
 running = True
@@ -143,10 +149,14 @@ while running:
 	for x in range(len(BOARD)):
 		for y in range(len(BOARD[x])):
 			cellrect = pygame.Rect(x * CELLSIZE, y * CELLSIZE, CELLSIZE, CELLSIZE)
+			board.blit(textures["ground"], cellrect)
 			if BOARD[x][y] == 0:
-				pygame.draw.rect(board, BLACK, cellrect, 1)
+				pass
+				#pygame.draw.rect(board, BLACK, cellrect, 1)
+				#board.blit(textures["ground"], cellrect)
 			elif BOARD[x][y] == 1:
-				pygame.draw.rect(board, RED, cellrect)
+				#pygame.draw.rect(board, RED, cellrect)
+				board.blit(textures["tower_active"], cellrect)
 				es = []
 				for e in entities:
 					if isinstance(e, Enemy): es.append(e)
@@ -158,7 +168,8 @@ while running:
 						e.die()
 						BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
-				pygame.draw.rect(board, BLACK, cellrect)
+				#pygame.draw.rect(board, BLACK, cellrect)
+				board.blit(textures["tower"], cellrect)
 				BOARD[x][y] -= 1
 	screen.blit(board, (0, FONTHEIGHT))
 	# Route
@@ -177,21 +188,22 @@ while running:
 		wave = not wave
 		if wave: wave_lvl += 1
 	# Text
-	t = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: ${money}, defenses left: {defense}", True, BLACK)
-	screen.blit(t, (0, 0))
-	if SCREENSIZE[0] < t.get_width():
-		SCREENSIZE[0] = t.get_width()
+	headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: ${money}, defenses left: {defense}", True, BLACK)
+	screen.blit(headertext, (0, 0))
+	if SCREENSIZE[0] < headertext.get_width():
+		SCREENSIZE[0] = headertext.get_width()
 		screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 	if defense <= 0:
 		running = False
+	headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: $", True, BLACK)
 	#pygame.draw.line(screen, BLACK, [cellno_to_pixel(e.prevpos[0]), cellno_to_pixel(e.prevpos[1])], [cellno_to_pixel(e.route[0][0]), cellno_to_pixel(e.route[0][1])], 1)
 	# Flip
 	pygame.display.flip()
 	c.tick(60)
 
 running = True
-t = FONT.render(f"You survived until wave {wave_lvl} and you had ${money}", True, BLACK)
-SCREENSIZE = [t.get_width(), t.get_height()]
+headertext = FONT.render(f"You survived until wave {wave_lvl} and you had ${money}", True, BLACK)
+SCREENSIZE = [headertext.get_width(), headertext.get_height()]
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 while running:
 	for event in pygame.event.get():
@@ -200,6 +212,6 @@ while running:
 		elif event.type == pygame.MOUSEBUTTONDOWN:
 			running = False
 	screen.fill(WHITE)
-	screen.blit(t, (0, 0))
+	screen.blit(headertext, (0, 0))
 	pygame.display.flip()
 	c.tick(60)
