@@ -69,6 +69,7 @@ class Mob(Entity):
 		self.pos = self.route[0].copy()
 		self.prevpos = self.route.pop(0)
 		self.ticks = 0
+		self.health = 10
 		entities.append(self)
 		self.initcustom()
 	def tick(self):
@@ -88,6 +89,9 @@ class Mob(Entity):
 			self.prevpos = self.route.pop(0)
 			self.ticks = 0
 		self.tickcustom()
+	def hit(self, hp):
+		self.health -= hp
+		if self.health <= 0: self.die()
 
 class Enemy(Mob):
 	speed = 0.03
@@ -96,8 +100,10 @@ class Enemy(Mob):
 
 class SplitEnemy(Enemy):
 	speed = 0.01
+	def initcustom(self):
+		self.health = 50
 	def draw(self):
-		r = pygame.Surface((10, 10))
+		r = pygame.Surface((30, 30))
 		r.fill((255, 120, 0))
 		return r
 	def despawn(self):
@@ -107,6 +113,18 @@ class SplitEnemy(Enemy):
 			x.route.insert(0, self.route[0].copy())
 			x.pos = [self.pos[0] + (random.choice(range(-40, 40, 5)) / 100), self.pos[1] + (random.choice(range(-40, 40, 5)) / 100)]
 			x.prevpos = x.pos.copy()
+
+class StrongEnemy(Enemy):
+	speed = 0.01
+	def initcustom(self):
+		self.health = 150
+	def draw(self):
+		r = pygame.Surface((30, 30))
+		r.fill((255, 0, 255))
+		return r
+	def despawn(self):
+		for i in range(20):
+			Coins(self.pos[0] + (random.choice(range(-40, 40, 5)) / 100), self.pos[1] + (random.choice(range(-40, 40, 5)) / 100))
 
 class Coins(Entity):
 	def draw(self):
@@ -202,7 +220,7 @@ while running:
 					e = es[0]
 					if dist((x, y), e.pos) < 2:
 						pygame.draw.line(board, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
-						e.die()
+						e.hit(10)
 						BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
 				board.blit(textures["tower"], cellrect)
