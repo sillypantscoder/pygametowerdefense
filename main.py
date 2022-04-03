@@ -72,6 +72,7 @@ class Mob(Entity):
 		self.health = 10
 		entities.append(self)
 		self.initcustom()
+		self.health *= 1 + (0.05 * wave_lvl)
 	def tick(self):
 		global defense
 		if len(self.route) == 0:
@@ -103,7 +104,7 @@ class SplitEnemy(Enemy):
 	def initcustom(self):
 		self.health = 50
 	def draw(self):
-		r = pygame.Surface((30, 30))
+		r = pygame.Surface((20, 20))
 		r.fill((255, 120, 0))
 		return r
 	def despawn(self):
@@ -146,13 +147,12 @@ class Coins(Entity):
 			money += 1
 			self.die()
 
+wave_lvl = 0
 entities: "list[Entity]" = []
-SplitEnemy()
 cellno_to_pixel = (lambda x: round((x * CELLSIZE) + (0.5 * CELLSIZE)))
 pixel_to_cellno = (lambda x: (x - (0.5 * CELLSIZE)) / CELLSIZE)
 cellnos_to_pixels = (lambda x, y: (cellno_to_pixel(x), cellno_to_pixel(y)))
 pixels_to_cellnos = (lambda x, y: (pixel_to_cellno(x), pixel_to_cellno(y)))
-wave_lvl = 0
 wave_time = 60 * 5
 wave = False
 defense = 10
@@ -161,9 +161,14 @@ headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({st
 textures = {
 	"ground": pygame.transform.scale(pygame.image.load("ground.png"), (CELLSIZE, CELLSIZE)),
 	"tower_active": pygame.transform.scale(pygame.image.load("tower_active.png"), (CELLSIZE, CELLSIZE)),
-	"tower": pygame.transform.scale(pygame.image.load("tower.png"), (CELLSIZE, CELLSIZE))
+	"tower": pygame.transform.scale(pygame.image.load("tower.png"), (CELLSIZE, CELLSIZE)),
+	"super_tower": pygame.transform.scale(pygame.image.load("super_tower.png"), (CELLSIZE, CELLSIZE)),
+	"super_tower_active": pygame.transform.scale(pygame.image.load("super_tower_active.png"), (CELLSIZE, CELLSIZE))
 }
-tower_row = [{"id": 99, "image": "tower", "cost": 3}]
+tower_row = [
+	{"id": 99, "image": "tower", "cost": 3},
+	{"id": 100, "image": "super_tower", "cost": 50}
+]
 dragging_thing = None
 
 c = pygame.time.Clock()
@@ -181,7 +186,7 @@ while running:
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 		elif event.type == pygame.MOUSEBUTTONDOWN:
 			if tower_row_rect_mouse.collidepoint(*pos):
-				idx = (pos[0] - tower_row_rect.left) / SCREENSIZE[0]
+				idx = (pos[0] - tower_row_rect.left) / CELLSIZE
 				idx = math.floor(idx)
 				if idx < len(tower_row):
 					dragging_thing = tower_row[idx]
@@ -192,9 +197,9 @@ while running:
 			else:
 				x = math.floor(pos[0] / CELLSIZE)
 				y = math.floor(pos[1] / CELLSIZE)
-				if insideBoard(x, y) and money >= 3 and BOARD[x][y] == 0:
+				if insideBoard(x, y) and money >= dragging_thing["cost"] and BOARD[x][y] == 0:
 					BOARD[x][y] = dragging_thing['id']
-					money -= 3
+					money -= dragging_thing["cost"]
 			dragging_thing = None
 	# Drawing
 	screen.fill(WHITE)
@@ -225,17 +230,34 @@ while running:
 			elif BOARD[x][y] < 100:
 				board.blit(textures["tower"], cellrect)
 				BOARD[x][y] -= 1
+			elif BOARD[x][y] == 100:
+				board.blit(textures["super_tower_active"], cellrect)
+				es = []
+				for e in entities:
+					if isinstance(e, Enemy): es.append(e)
+				es.sort(key=lambda z: dist((x, y), z.pos))
+				if len(es) > 0:
+					e = es[0]
+					if dist((x, y), e.pos) < 2:
+						pygame.draw.line(board, RED, cellnos_to_pixels(x, y), cellnos_to_pixels(*e.pos))
+						e.hit(10)
+						BOARD[x][y] = 101
+			elif BOARD[x][y] == 101:
+				board.blit(textures["super_tower"], cellrect)
+				BOARD[x][y] -= 1
 	screen.blit(board, (0, FONTHEIGHT))
 	# Route
 	for i in range(len(ROUTE) - 1):
 		start = (cellno_to_pixel(ROUTE[i][0]), cellno_to_pixel(ROUTE[i][1]))
 		end = (cellno_to_pixel(ROUTE[i + 1][0]), cellno_to_pixel(ROUTE[i + 1][1]))
 		pygame.draw.line(screen, RED, start, end, round(0.3 * CELLSIZE))
+	o = cellnos_to_pixels(*ROUTE[-1])
+	pygame.draw.circle(screen, WHITE, [o[0], o[1]], CELLSIZE / 2)
 	# Entities
 	for e in entities:
 		e.frame()
 	# Spawning
-	if wave and random.random() < 0.08 * wave_lvl: Enemy()
+	if wave and random.random() < 0.04 * wave_lvl: Enemy()
 	if wave and random.random() < 0.01 * (wave_lvl - 10): SplitEnemy()
 	wave_time -= 1
 	if wave_time <= 0:
@@ -253,14 +275,16 @@ while running:
 	headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: $", True, BLACK)
 	# Bottom row of towers
 	pygame.draw.rect(screen, WHITE, tower_row_rect)
+	x = 0
 	for t in tower_row:
-		screen.blit(textures[t["image"]], (0, SCREENSIZE[1] - 50))
+		screen.blit(textures[t["image"]], (x, SCREENSIZE[1] - CELLSIZE))
+		x += CELLSIZE
 	# Dragging tower
 	x = math.floor(pos[0] / CELLSIZE)
 	y = math.floor(pos[1] / CELLSIZE)
 	if dragging_thing:
 		drag_target = pygame.Rect(x * CELLSIZE, (y * CELLSIZE) + FONTHEIGHT, CELLSIZE, CELLSIZE)
-		if insideBoard(x, y) and money >= 3 and BOARD[x][y] == 0:
+		if insideBoard(x, y) and money >= dragging_thing["cost"] and BOARD[x][y] == 0:
 			pygame.draw.rect(screen, (0, 255, 0), drag_target, 5)
 		else:
 			pygame.draw.rect(screen, (255, 0, 0), drag_target, 5)
