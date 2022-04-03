@@ -1,4 +1,3 @@
-from tkinter.tix import CELL
 import pygame
 import random
 import math
@@ -65,8 +64,8 @@ class Entity:
 
 class Mob(Entity):
 	speed = 0.01
-	def __init__(self, route: "list[list[int]]" = ROUTE):
-		self.route = routecopy(route)
+	def __init__(self, route: "list[list[int]]" = None):
+		self.route = routecopy(route if route else ROUTE)
 		self.pos = self.route[0].copy()
 		self.prevpos = self.route.pop(0)
 		self.ticks = 0
@@ -95,6 +94,20 @@ class Enemy(Mob):
 	def despawn(self):
 		Coins(self.pos[0] + (random.choice(range(-40, 40, 5)) / 100), self.pos[1] + (random.choice(range(-40, 40, 5)) / 100))
 
+class SplitEnemy(Enemy):
+	speed = 0.01
+	def draw(self):
+		r = pygame.Surface((10, 10))
+		r.fill((255, 120, 0))
+		return r
+	def despawn(self):
+		Coins(self.pos[0] + (random.choice(range(-40, 40, 5)) / 100), self.pos[1] + (random.choice(range(-40, 40, 5)) / 100))
+		for i in range(5):
+			x = Enemy(routecopy(self.route))
+			x.route.insert(0, self.route[0].copy())
+			x.pos = [self.pos[0] + (random.choice(range(-40, 40, 5)) / 100), self.pos[1] + (random.choice(range(-40, 40, 5)) / 100)]
+			x.prevpos = x.pos.copy()
+
 class Coins(Entity):
 	def draw(self):
 		r = pygame.Surface((8, 8), pygame.SRCALPHA)
@@ -116,6 +129,7 @@ class Coins(Entity):
 			self.die()
 
 entities: "list[Entity]" = []
+SplitEnemy()
 cellno_to_pixel = (lambda x: round((x * CELLSIZE) + (0.5 * CELLSIZE)))
 pixel_to_cellno = (lambda x: (x - (0.5 * CELLSIZE)) / CELLSIZE)
 cellnos_to_pixels = (lambda x, y: (cellno_to_pixel(x), cellno_to_pixel(y)))
@@ -204,6 +218,7 @@ while running:
 		e.frame()
 	# Spawning
 	if wave and random.random() < 0.08 * wave_lvl: Enemy()
+	if wave and random.random() < 0.01 * (wave_lvl - 10): SplitEnemy()
 	wave_time -= 1
 	if wave_time <= 0:
 		wave_time = 60 * 10
