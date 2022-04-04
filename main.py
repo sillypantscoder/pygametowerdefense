@@ -1,3 +1,4 @@
+from signal import pause
 import pygame
 import random
 import math
@@ -40,7 +41,7 @@ class Entity:
 		self.pos = [x, y]
 		self.initcustom()
 	def frame(self):
-		self.tick()
+		if not paused: self.tick()
 		if self in entities:
 			s = self.draw()
 			x = cellno_to_pixel(self.pos[0])# - (s.get_width() / 2)
@@ -170,6 +171,7 @@ tower_row = [
 	{"id": 100, "image": "super_tower", "cost": 50}
 ]
 dragging_thing = None
+paused = False
 
 c = pygame.time.Clock()
 running = True
@@ -193,14 +195,23 @@ while running:
 		elif event.type == pygame.MOUSEBUTTONUP and dragging_thing != None:
 			if tower_row_rect_mouse.collidepoint(*pos):
 				# let go within the tower row, so ignore it.
-				pass
+				idx = (pos[0] - tower_row_rect.left) / CELLSIZE
+				idx = math.floor(idx)
+				if dragging_thing == tower_row[idx]:
+					# We just clicked, so keep dragging.
+					pass
+				else: dragging_thing = None
 			else:
 				x = math.floor(pos[0] / CELLSIZE)
 				y = math.floor(pos[1] / CELLSIZE)
 				if insideBoard(x, y) and money >= dragging_thing["cost"] and BOARD[x][y] == 0:
 					BOARD[x][y] = dragging_thing['id']
 					money -= dragging_thing["cost"]
-			dragging_thing = None
+				dragging_thing = None
+		elif event.type == pygame.KEYDOWN:
+			keys = pygame.key.get_pressed()
+			if keys[pygame.K_ESCAPE]:
+				paused = not paused
 	# Drawing
 	screen.fill(WHITE)
 	# Board
@@ -229,7 +240,7 @@ while running:
 						BOARD[x][y] = 99
 			elif BOARD[x][y] < 100:
 				board.blit(textures["tower"], cellrect)
-				BOARD[x][y] -= 1
+				if not paused: BOARD[x][y] -= 1
 			elif BOARD[x][y] == 100:
 				board.blit(textures["super_tower_active"], cellrect)
 				es = []
@@ -244,7 +255,7 @@ while running:
 						BOARD[x][y] = 101
 			elif BOARD[x][y] == 101:
 				board.blit(textures["super_tower"], cellrect)
-				BOARD[x][y] -= 1
+				if not paused: BOARD[x][y] -= 1
 	screen.blit(board, (0, FONTHEIGHT))
 	# Route
 	for i in range(len(ROUTE) - 1):
@@ -257,15 +268,16 @@ while running:
 	for e in entities:
 		e.frame()
 	# Spawning
-	if wave and random.random() < 0.04 * wave_lvl: Enemy()
-	if wave and random.random() < 0.01 * (wave_lvl - 10): SplitEnemy()
-	wave_time -= 1
-	if wave_time <= 0:
-		wave_time = 60 * 10
-		wave = not wave
-		if wave: wave_lvl += 1
+	if not paused:
+		if wave and random.random() < 0.04 * wave_lvl: Enemy()
+		if wave and random.random() < 0.01 * (wave_lvl - 10): SplitEnemy()
+		wave_time -= 1
+		if wave_time <= 0:
+			wave_time = 60 * 10
+			wave = not wave
+			if wave: wave_lvl += 1
 	# Text
-	headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}); Money: ${money}, defenses left: {defense}", True, BLACK)
+	headertext = FONT.render(f"{'Wave' if wave else 'Finished wave'} {wave_lvl} ({str(round(wave_time / 60, ndigits=2)).replace('.', ':')}{' Paused' if paused else ''}); Money: ${money}, defenses left: {defense}", True, BLACK)
 	screen.blit(headertext, (0, 0))
 	if SCREENSIZE[0] < headertext.get_width():
 		SCREENSIZE[0] = headertext.get_width()
